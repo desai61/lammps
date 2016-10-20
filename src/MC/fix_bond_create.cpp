@@ -291,17 +291,17 @@ void FixBondCreate::setup(int vflag)
   for (i = 0; i < nall; i++) bondcount[i] = 0;
 
   for (i = 0; i < nlocal; i++)
-    for (j = 0; j < num_bond[i]; j++) {
-      if (bond_type[i][j] == btype) {
+    for (j = 0; j < num_bond[i]; j++) 
+    {
         bondcount[i]++;
-        if (newton_bond) {
+        if (newton_bond) 
+        {
           m = atom->map(bond_atom[i][j]);
           if (m < 0)
             error->one(FLERR,"Fix bond/create needs ghost atoms "
                        "from further away");
           bondcount[m]++;
         }
-      }
     }
 
   // if newton_bond is set, need to sum bondcount
