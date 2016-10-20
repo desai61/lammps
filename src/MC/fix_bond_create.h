@@ -53,6 +53,7 @@ class FixBondCreate : public Fix {
   int imaxbond,jmaxbond;
   int inewtype,jnewtype;
   double cutsq,fraction;
+  double lowercutsq,highercutsq;
   int atype,dtype,itype;
   int angleflag,dihedralflag,improperflag;
   int overflow;

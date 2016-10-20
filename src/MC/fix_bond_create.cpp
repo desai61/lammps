@@ -59,17 +59,19 @@ FixBondCreate::FixBondCreate(LAMMPS *lmp, int narg, char **arg) :
 
   iatomtype = force->inumeric(FLERR,arg[4]);
   jatomtype = force->inumeric(FLERR,arg[5]);
-  double cutoff = force->numeric(FLERR,arg[6]);
-  btype = force->inumeric(FLERR,arg[7]);
+  double lowercutoff = force->numeric(FLERR,arg[6]);
+  double highercutoff = force->numeric(FLERR,arg[7]);
+  btype = force->inumeric(FLERR,arg[8]);
 
   if (iatomtype < 1 || iatomtype > atom->ntypes ||
       jatomtype < 1 || jatomtype > atom->ntypes)
     error->all(FLERR,"Invalid atom type in fix bond/create command");
-  if (cutoff < 0.0) error->all(FLERR,"Illegal fix bond/create command");
+  if (lowercutoff < 0.0 || highercutoff < 0.0 || lowercutoff > highercutoff) error->all(FLERR,"Illegal fix bond/create command");
   if (btype < 1 || btype > atom->nbondtypes)
     error->all(FLERR,"Invalid bond type in fix bond/create command");
 
-  cutsq = cutoff*cutoff;
+  lowercutsq = lowercutoff*lowercutoff;
+  highercutsq = highercutoff*highercutoff;
 
   // optional keywords
 
@@ -81,7 +83,7 @@ FixBondCreate::FixBondCreate(LAMMPS *lmp, int narg, char **arg) :
   int seed = 12345;
   atype = dtype = itype = 0;
 
-  int iarg = 8;
+  int iarg = 9; // now taking in 2 cutoffs
   while (iarg < narg) {
     if (strcmp(arg[iarg],"iparam") == 0) {
       if (iarg+3 > narg) error->all(FLERR,"Illegal fix bond/create command");
@@ -216,7 +218,7 @@ void FixBondCreate::init()
 
   // check cutoff for iatomtype,jatomtype
 
-  if (force->pair == NULL || cutsq > force->pair->cutsq[iatomtype][jatomtype])
+  if (force->pair == NULL || highercutsq > force->pair->cutsq[iatomtype][jatomtype])
     error->all(FLERR,"Fix bond/create cutoff is longer than pairwise cutoff");
 
   // enable angle/dihedral/improper creation if atype/dtype/itype
@@ -392,18 +394,22 @@ void FixBondCreate::post_integrate()
     jlist = firstneigh[i];
     jnum = numneigh[i];
 
-    for (jj = 0; jj < jnum; jj++) {
+    for (jj = 0; jj < jnum; jj++) 
+    {
       j = jlist[jj];
       j &= NEIGHMASK;
       if (!(mask[j] & groupbit)) continue;
       jtype = type[j];
 
       possible = 0;
-      if (itype == iatomtype && jtype == jatomtype) {
+      if (itype == iatomtype && jtype == jatomtype) 
+      {
         if ((imaxbond == 0 || bondcount[i] < imaxbond) &&
             (jmaxbond == 0 || bondcount[j] < jmaxbond))
           possible = 1;
-      } else if (itype == jatomtype && jtype == iatomtype) {
+      }
+      else if (itype == jatomtype && jtype == iatomtype) 
+      {
         if ((jmaxbond == 0 || bondcount[i] < jmaxbond) &&
             (imaxbond == 0 || bondcount[j] < imaxbond))
           possible = 1;
@@ -421,13 +427,14 @@ void FixBondCreate::post_integrate()
       dely = ytmp - x[j][1];
       delz = ztmp - x[j][2];
       rsq = delx*delx + dely*dely + delz*delz;
-      if (rsq >= cutsq) continue;
-
-      if (rsq < distsq[i]) {
+      if (rsq < lowercutsq || rsq > highercutsq) continue;
+      if (rsq < distsq[i]) 
+      {
         partner[i] = tag[j];
         distsq[i] = rsq;
       }
-      if (rsq < distsq[j]) {
+      if (rsq < distsq[j]) 
+      {
         partner[j] = tag[i];
         distsq[j] = rsq;
       }
